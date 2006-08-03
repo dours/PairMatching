@@ -2,7 +2,7 @@
 TESTS = test001
 
 # Set testing script with optional environment valiables
-TESTS_ENVIRONMENT = ./randomTest.sh
+TESTS_ENVIRONMENT = $(srcdir)/randomTest.sh
 
 #PARSER_INCLUDES += -I $(top_srcdir)/src
 MODULE_INCLUDES += -I $(top_srcdir)/src
@@ -25,5 +25,6 @@ clean-am:
 	rm -fR testingResult*
 	rm -f $(addsuffix $(EXEEXT), $(TESTS))
 
+# Rules to build tests
 test001: test001.ml
 	$(OCAMLOPT) $(BFLAGS) $(P4FLAGS) -o $@$(EXEEXT) $(EXTRA_CMXA) $(PACKAGE).cmxa $<
