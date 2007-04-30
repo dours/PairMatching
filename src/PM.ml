@@ -29,7 +29,7 @@ module type BiGraph =
     val nBoys  : t -> int
     val nGirls : t -> int
 
-    val edges : t -> ((int * int) * int) array
+    val edges : t -> ((int * int) * int) Urray.t
     
   end
 
@@ -77,23 +77,21 @@ module Make (G : BiGraph) =
       let module Graph =
           struct
  
-            open Array
-
-            let boys, _, pm = fold_left 
+            let boys, _, pm = Urray.fold_left 
 		(fun (boys, index, vector) (((boy, girl), weight) as e) ->
-                  boys.(boy) <- ((boy, girl), weight, index) :: boys.(boy);
-                  vector.(index) <- (false, e);
+                  Urray.set boys boy (((boy, girl), weight, index) :: (Urray.get boys boy));
+                  Urray.set vector index (false, e);
                   (boys, index+1, vector)
 		) 
 		(
-                 init (G.nBoys graph) (fun _ -> []), 
+                 Urray.init (G.nBoys graph) (fun _ -> []), 
                  0, 
-                 make (length (G.edges graph)) (false, ((0, 0), 0))
+                 Urray.make (Urray.length (G.edges graph)) (false, ((0, 0), 0))
 		) 
 		(G.edges graph)
 		
-            let boyIsFree = Array.make (G.nBoys graph) true
-            let husband = Array.make (G.nGirls graph) None 
+            let boyIsFree = Urray.make (G.nBoys graph) true
+            let husband = Urray.make (G.nGirls graph) None 
 		
             module Edge =
               struct
@@ -106,25 +104,25 @@ module Make (G : BiGraph) =
                 let weight ((_, _), x, _) = x
                 let index  ((_, _), _, x) = x
 
-                let inMatching (_, _, x) = fst pm.(x)
+                let inMatching (_, _, x) = fst (Urray.get pm x)
 
                 let includeIn  (((boy, girl), _, x) as e) = 
-		  pm.(x) <- (true, snd pm.(x));
-		  boyIsFree.(boy) <- false;
-		  husband.(girl) <- Some e
+		  Urray.set pm x (true, snd (Urray.get pm x));
+		  Urray.set boyIsFree boy false;
+		  Urray.set husband girl (Some e)
 		      
                 let excludeOut ((boy, girl), _, x) = 
-		  pm.(x) <- (false, snd pm.(x));
-		  boyIsFree.(boy) <- true;
-		  husband.(girl) <- None 		
+		  Urray.set pm x (false, snd (Urray.get pm x));
+		  Urray.set boyIsFree boy true;
+		  Urray.set husband girl None
 		      
               end
 
-            module P (S : sig val a : ((int * int) * int * int) list array end) =
+            module P (S : sig val a : ((int * int) * int * int) list Urray.t end) =
               struct
 
                 type t = int
-                let out n = try S.a.(n) with _ -> raise (Failure "getting out")
+                let out n = try Urray.get S.a n with _ -> raise (Failure "getting out")
 
               end
 
@@ -132,16 +130,17 @@ module Make (G : BiGraph) =
 	    
 	    let checkPM () = 
 
-		let useBoyCounter = Array.make (G.nBoys graph) false in
-		let useGirlCounter = Array.make (G.nGirls graph) false in
+		let useBoyCounter = Urray.make (G.nBoys graph) false in
+		let useGirlCounter = Urray.make (G.nGirls graph) false in
 
-		Array.iter 
+		Urray.iter 
 		  (fun (inp, ((boy, girl), _)) ->
 		    if inp then
-		      if (useBoyCounter.(boy) || useGirlCounter.(girl)) then raise (Failure "Pairmatching CAPUT")
+		      if (Urray.get useBoyCounter boy || Urray.get useGirlCounter girl) 
+		      then raise (Failure "Pairmatching CAPUT")
 		    else begin
-		      useBoyCounter.(boy) <- true;
-		      useGirlCounter.(girl) <- true
+		      Urray.set useBoyCounter boy true;
+		      Urray.set useGirlCounter girl true
 		    end
 		  ) pm
 		  
@@ -168,25 +167,25 @@ module Make (G : BiGraph) =
       );
 
       let u, v = 
-          Array.make (G.nBoys graph) (Array.fold_left (fun m e -> max m (snd e)) 0 (G.edges graph)), 
-          Array.make (G.nGirls graph) 0 
+          Urray.make (G.nBoys graph) (Urray.fold_left (fun m e -> max m (snd e)) 0 (G.edges graph)), 
+          Urray.make (G.nGirls graph) 0 
       in
 
       LOG (
         fprintf stderr "U {\n";
-        Array.iteri (fprintf stderr " [%d]=%d\n") u;
+        Urray.iteri (fprintf stderr " [%d]=%d\n") u;
         fprintf stderr "}\n";
 
         fprintf stderr "V {\n";
-        Array.iteri (fprintf stderr " [%d]=%d\n") v;
+        Urray.iteri (fprintf stderr " [%d]=%d\n") v;
         fprintf stderr "}\n";
 
         fprintf stderr "boyIsFree {\n"; 
-        Array.iteri (fprintf stderr " [%d]=%b\n") Graph.boyIsFree;
+        Urray.iteri (fprintf stderr " [%d]=%b\n") Graph.boyIsFree;
         fprintf stderr "}\n";
 
         fprintf stderr "V {\n";
-        Array.iteri 
+        Urray.iteri 
 	     (fun i h -> fprintf stderr " [%d]=%d\n" i 
 	          (match h with | None -> -1 | Some ((i, _), _, _) -> i)
              ) Graph.husband;
@@ -207,25 +206,25 @@ module Make (G : BiGraph) =
 	
 	let h = H.empty in
 	 
-	if not (forAllNum (fun i -> (not Graph.boyIsFree.(i)) || (u.(i) = 0)) (G.nBoys graph))
+	if not (forAllNum (fun i -> (not (Urray.get Graph.boyIsFree i)) || ((Urray.get u i) = 0)) (G.nBoys graph))
 	then            
 	  
           let boyIsUsed, girlIsUsed =
-            Array.make (G.nBoys graph) false,
-            Array.make (G.nGirls graph) false
+            Urray.make (G.nBoys graph) false,
+            Urray.make (G.nGirls graph) false
           in
 	  
           let rec searchPath (cu, cv, (shift, h)) boy =
 	    
             LOG (fprintf stderr "searchPath %i\n" boy); 
 	    
-	    if boyIsUsed.(boy) then ((cu, cv, (shift, h)), None)
+	    if Urray.get boyIsUsed boy then ((cu, cv, (shift, h)), None)
             else begin
-	      boyIsUsed.(boy) <- true;
+	      Urray.set boyIsUsed boy true;
 	      
 	      let (h, l) = List.fold_left (fun (h, l) (((boy, girl), weight, _) as e) ->
-	            if u.(boy) + v.(girl) = weight then h, e :: l else 
-		    (H.add h (e, u.(boy) + v.(girl) - weight + shift), l)) (h, []) (Graph.Boy.out boy)
+	            if (Urray.get u boy) + (Urray.get v girl) = weight then h, e :: l else 
+		    (H.add h (e, (Urray.get u boy) + (Urray.get v girl) - weight + shift), l)) (h, []) (Graph.Boy.out boy)
 	      in
 	      LOG (fprintf stderr "Heap AFTER ADDITION = %s\n" (H.toString h));
 	      foldAndFindList searchPathForEdge ((Add boy) :: cu, cv, (shift, h)) l
@@ -233,16 +232,16 @@ module Make (G : BiGraph) =
 	    end
 	  and
     	  searchPathForEdge (cu, cv, sh) (((boy, girl), weight, index) as e) = 
-		if girlIsUsed.(girl) then (cu, cv, sh), None 
+		if Urray.get girlIsUsed girl then (cu, cv, sh), None 
 		else begin
 		  let state = (cu, (Add girl) :: cv, sh) in
-		  girlIsUsed.(girl) <- true;
-		  if (Graph.husband.(girl) = None) then state, Some [e] 
+		  Urray.set girlIsUsed girl true;
+		  if ((Urray.get Graph.husband girl) = None) then state, Some [e] 
 		  else if not (Graph.Edge.inMatching e) then 
-		    let nextBoy = Graph.Edge.boy (unsome Graph.husband.(girl)) in
+		    let nextBoy = Graph.Edge.boy (unsome (Urray.get Graph.husband girl)) in
 		    match searchPath state nextBoy with
 		    | state, None -> state, None
-		    | state, (Some l) -> state, (Some (e :: (unsome Graph.husband.(girl)) :: l))
+		    | state, (Some l) -> state, (Some (e :: (unsome (Urray.get Graph.husband girl)) :: l))
 		  else state, None
 		end 
 	  in
@@ -278,7 +277,7 @@ module Make (G : BiGraph) =
               );
 	    
 	      let rec follow (cu, cv, (shift, h)) = 	    
-                let minU = u.(List.hd startBoys) - shift in
+                let minU = Urray.get u (List.hd startBoys) - shift in
 
 	     	LOG (fprintf stderr "Heap = %s\n" (H.toString h));
 
@@ -287,7 +286,7 @@ module Make (G : BiGraph) =
 
 		    LOG (fprintf stderr "Another edge is %i -> %i, slack = %i\n" boy girl slack);
 
-		    if boyIsUsed.(boy) && (not girlIsUsed.(girl)) 
+		    if (Urray.get boyIsUsed boy) && not (Urray.get girlIsUsed girl)
                     then h, (Some slack) 
                     else (fst (H.removeMin h)), None
 		) H.isEmpty h
@@ -322,18 +321,18 @@ module Make (G : BiGraph) =
 	     in follow state 
 	  in
 	  
-	  let freeBoys = foldNum (fun l n -> if Graph.boyIsFree.(n) then n :: l else l) [] (G.nBoys graph) in
+	  let freeBoys = foldNum (fun l n -> if Urray.get Graph.boyIsFree n then n :: l else l) [] (G.nBoys graph) in
 	  
 	  match  foundPath ([], [], (0, H.empty)) freeBoys with
           | cu, cv, (Some _) -> 
-	     Array.fill boyIsUsed 0 (Array.length boyIsUsed) false;
-	     Array.fill girlIsUsed 0 (Array.length girlIsUsed) false;
+	     Urray.fill boyIsUsed 0 (Urray.length boyIsUsed) false;
+	     Urray.fill girlIsUsed 0 (Urray.length girlIsUsed) false;
 	    
 	     LOG(
 	       fprintf stderr "u = (";
-	       Array.iter (fprintf stderr "%i ") u;
+	       Urray.iter (fprintf stderr "%i ") u;
 	       fprintf stderr ")\nv = (";
-	       Array.iter (fprintf stderr "%i ") v;
+	       Urray.iter (fprintf stderr "%i ") v;
 	       fprintf stderr ")\n";	    
 	       fprintf stderr "updateBoys = %s\n" 
 	          (List.fold_left  
@@ -346,22 +345,22 @@ module Make (G : BiGraph) =
              ignore (List.fold_left (fun increment command -> match command with 
 		| Increment delta -> increment + delta
 		| Add boy -> 
-		    u.(boy) <- u.(boy) + increment;
+		    Urray.set u boy ((Urray.get u boy) + increment);
 		    increment
 	     ) 0 cu);
 	    
 	     ignore (List.fold_left (fun increment command -> match command with 
 		| Increment delta -> increment + delta
 		| Add girl -> 
-		    v.(girl) <- v.(girl) + increment;
+		    Urray.set v girl (Urray.get v girl + increment);
 		    increment
 	     ) 0 cv);
 	    
 	     LOG (
                 fprintf stderr "u = (";
-	        Array.iter (fprintf stderr "%i ") u;
+	        Urray.iter (fprintf stderr "%i ") u;
 	        fprintf stderr ")\nv = (";
-	        Array.iter (fprintf stderr "%i ") v;
+	        Urray.iter (fprintf stderr "%i ") v;
 	        fprintf stderr ")\n";
 	     );
 							    
@@ -376,11 +375,11 @@ module Make (G : BiGraph) =
 	     updateMatch path;
 
              LOG (
-                Array.iter (fprintf stderr "%b, ") Graph.boyIsFree;
+                Urray.iter (fprintf stderr "%b, ") Graph.boyIsFree;
 	        fprintf stderr "%s" "\n";
-	        Array.iter (fun (inp, ((b, g), w)) -> fprintf stderr "%b, %i -> %i (%i)\n" inp b g w ) Graph.pm;
+	        Urray.iter (fun (inp, ((b, g), w)) -> fprintf stderr "%b, %i -> %i (%i)\n" inp b g w ) Graph.pm;
 	        fprintf stderr "%s" "\n";
-	        Array.iter (fun x -> fprintf stderr "%s" (match x with | None -> "none " | Some _ -> "some ")) Graph.husband
+	        Urray.iter (fun x -> fprintf stderr "%s" (match x with | None -> "none " | Some _ -> "some ")) Graph.husband
              );
 
 	     bigStage ()
@@ -394,12 +393,12 @@ module Make (G : BiGraph) =
        fprintf stderr "%s" "computed ans\n";
        fprintf stderr "%s" " It is:\n";     
 
-       Array.iter (fun (inp, ((b, g), w)) -> if inp then fprintf stderr "%i -> %i, w = %i\n" b g w) Graph.pm;
+       Urray.iter (fun (inp, ((b, g), w)) -> if inp then fprintf stderr "%i -> %i, w = %i\n" b g w) Graph.pm;
 
        Graph.checkPM ();
      );
     
-     Array.fold_left (fun ans (inp, e) -> if inp then e :: ans else ans) [] Graph.pm
+     Urray.fold_left (fun ans (inp, e) -> if inp then e :: ans else ans) [] Graph.pm
      
   end
 
@@ -408,40 +407,38 @@ module MakeExhaustiveSearch (G : BiGraph) =
 
     let search graph = 
 
-      let boys = Array.fold_left 
-	  (fun boys ((boy, girl), w) -> 
-	    boys.(boy) <- (girl, w) :: boys.(boy); boys
-	  ) 
-	  (Array.make (G.nBoys graph) []) 
+      let boys = Urray.fold_left 
+	  (fun boys ((boy, girl), w) -> Urray.set boys boy ((girl, w) :: (Urray.get boys boy)); boys) 
+	  (Urray.make (G.nBoys graph) []) 
 	  (G.edges graph)
       in
 
-      let girlIsUsed = Array.make (G.nGirls graph) false in
+      let girlIsUsed = Urray.make (G.nGirls graph) false in
 
       let rec inner boy = 
 	if boy = -1 then 0, [] 
         else
           List.fold_left 
 	    (fun (max1, ans1) ((girl, w) as e) ->
-	      if girlIsUsed.(girl) then (max1, ans1) 
+	      if Urray.get girlIsUsed girl then (max1, ans1) 
 	      else begin
-		girlIsUsed.(girl) <- true;
+		Urray.set girlIsUsed girl true;
 		let max2, ans2 = inner (boy - 1) in
 		let ans =
 		  if max2 + w > max1 then (max2 + w, (Some e) :: ans2) 
 		  else max1, ans1
 		in
 
-		girlIsUsed.(girl) <- false;
+		Urray.set girlIsUsed girl false;
 
 		ans
 	      end
 	    ) 
-	    (let m, a = inner (boy - 1) in m, None :: a) boys.(boy)
+	    (let m, a = inner (boy - 1) in m, None :: a) (Urray.get boys boy)
       in
       let check m a = 
 
-	let girlUsed = Array.make (G.nGirls graph) false in
+	let girlUsed = Urray.make (G.nGirls graph) false in
 
 	if (List.length a) != (G.nBoys graph) then raise (Failure "length !!!") 
 	else
@@ -450,9 +447,9 @@ module MakeExhaustiveSearch (G : BiGraph) =
 		match e with 
 		| None -> s 
 		| Some (girl, w) -> 
-		    if girlUsed.(girl) then raise (Failure "girl already used!!!")
+		    if Urray.get girlUsed girl then raise (Failure "girl already used!!!")
 		    else begin
-		      girlUsed.(girl) <- true;
+		      Urray.set girlUsed girl true;
 		      s + w
 		    end
 	      ) 0 a

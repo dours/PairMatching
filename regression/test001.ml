@@ -1,7 +1,7 @@
 module G =
   struct
 
-    type t = ((int * int) * int) array * int * int
+    type t = ((int * int) * int) Urray.t * int * int
 
     let nBoys (_, x, _) = x
     let nGirls (_, _, x) = x
@@ -11,7 +11,7 @@ module G =
     let toString (ar, boys, girls) = 
 	let buf = Buffer.create 1024 in
 	Buffer.add_string buf (Printf.sprintf "%i %i\n" boys girls);
-	Array.iter (fun ((boy, girl), w) -> Buffer.add_string buf (Printf.sprintf "  %i %i %i\n" boy girl w)) ar;
+	Urray.iter (fun ((boy, girl), w) -> Buffer.add_string buf (Printf.sprintf "  %i %i %i\n" boy girl w)) ar;
 	Buffer.contents buf
 
     let fromFile name = 
@@ -31,7 +31,7 @@ module G =
 	with 
 	  | _ -> ();
 	;
-	((Array.of_list (List.rev !edges)), n, m)
+	((Urray.of_list (List.rev !edges)), n, m)
 	
 
   end
@@ -66,7 +66,7 @@ module Perebor = PM.MakeExhaustiveSearch (G)
 
 let randomFullGraph nBoys nGirls st = 
     let bound = (max_int / 2) / (max nBoys nGirls) in
-    (Array.init (nBoys * nGirls) (fun i -> ((i mod nBoys, i / nBoys), Random.State.int st bound)), nBoys, nGirls)
+    (Urray.init (nBoys * nGirls) (fun i -> ((i mod nBoys, i / nBoys), Random.State.int st bound)), nBoys, nGirls)
     
 let randomGraph nBoys nGirls prob st = 
 (*   !!!!!!!!!!!!! let bound = (max_int / 2) / (max nBoys nGirls) in    *)
@@ -85,7 +85,7 @@ let randomGraph nBoys nGirls prob st =
 	) l nGirls)
      [] nBoys
     in
-    (Array.of_list elist, nBoys, nGirls)
+    (Urray.of_list elist, nBoys, nGirls)
     
 
 let failedOnce = ref false

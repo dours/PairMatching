@@ -45,7 +45,7 @@ module type BiGraph =
     (** Array of edges of the form [((b, g), w)] (the edge connects a boy number [b] 
         with a girl number [g] and has a weight [w].  
     *)
-    val edges : t -> ((int * int) * int) array
+    val edges : t -> ((int * int) * int) Urray.t
 
   end
 
