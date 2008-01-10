@@ -10,7 +10,12 @@ MODULE_INCLUDES += -I $(top_srcdir)/src
 EXTRA_CMA += $(PACKAGE).cma
 
 # OCaml parser call with flags
-AM_P4FLAGS =
+AM_P5FLAGS =
+
+# overwrite some variables
+PXFLAGS = $(P5FLAGS)
+CAMLPXLIB = $(CAMLP5LIB)
+MODULE_INCLUDES += -I $(CAMLP5LIB)
 
 TARGET = 
 
@@ -21,6 +26,6 @@ include $(top_srcdir)/m4/Makefile.am.targets
 
 # Rules to build tests
 %: %.ml
-	$(OCAMLOPT) $(BFLAGS) $(P4FLAGS) -o $@$(EXEEXT) $(EXTRA_CMXA) $<
+	$(OCAMLOPT) $(BFLAGS) $(PXFLAGS) -o $@$(EXEEXT) $(EXTRA_CMXA) $<
 
 include $(top_srcdir)/m4/Makefile.am.rules
