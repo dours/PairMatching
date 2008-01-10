@@ -1,7 +1,7 @@
 
 # type in sources here
-SOURCES = PM.ml
-MLI = PM.mli
+SOURCES = pM.ml
+MLI = pM.mli
 
 include $(top_srcdir)/m4/Makefile.am.vars
 
